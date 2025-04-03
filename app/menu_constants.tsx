@@ -37,11 +37,6 @@ export const SIDENAV_ITEMS: SideNavItemGroup[] = [
                     
                 ],
             },
-            {
-                title: 'Report a problem',
-                path: '/reports',
-                icon:<TbReport size={20}/>
-            },
         ]
     },
     
