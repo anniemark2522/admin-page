@@ -2,36 +2,56 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { updateGym, fetchGymById } from '@/lib/api/gymApi'; // Assuming you have the `updateGym` function
+import Link from "next/link";
+import { updateGym, fetchGyms, fetchGymClasses } from "@/lib/api/gymApi";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModel";
 
 export default function GymEditPage() {
   const { gymId } = useParams();
-  const [gym, setGym] = useState<any | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [newImage, setNewImage] = useState<string>("");
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  
-
   const router = useRouter();
+
+  const [gym, setGym] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [newImage, setNewImage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isClassesOpen, setIsClassesOpen] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [classToDelete, setClassToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     if (gymId && typeof gymId === "string") {
-      fetchGymById(gymId)
-        .then((data) => {
+      Promise.all([fetchGyms(gymId), fetchGymClasses(gymId)])
+        .then(([data, classData]) => {
           if (data && data.length > 0) {
-            const fetchedGym = data[0];
-            setGym({ ...fetchedGym, image: fetchedGym.image || [] });
+            const gymData = data[0];
+            setGym({
+              ...gymData,
+              image: gymData.image || [],
+              openHours: gymData.openHours || {
+                Sunday: "",
+                Monday: "",
+                Tuesday: "",
+                Wednesday: "",
+                Thursday: "",
+                Friday: "",
+                Saturday: "",
+              },
+              classes:
+                Array.isArray(classData) &&
+                classData.length > 0 &&
+                Array.isArray(classData[0].classes)
+                  ? classData[0].classes
+                  : [],
+            });
           } else {
             setGym(null);
           }
           setLoading(false);
         })
-        .catch((error) => {
-          console.error("Error fetching gym data:", error);
+        .catch((err) => {
+          console.error("Error fetching gym or classes:", err);
           setLoading(false);
         });
-    } else {
-      setLoading(false);
     }
   }, [gymId]);
 
@@ -39,51 +59,67 @@ export default function GymEditPage() {
     return (
       gym.description &&
       gym.location &&
-      gym.image && gym.image.length > 0 &&
+      gym.image &&
+      gym.image.length > 0 &&
       gym.openHours &&
       gym.url
     );
   };
 
   const handleAddImage = () => {
-    if (newImage && gym?.image && !gym.image.includes(newImage)) {
+    if (newImage && !gym.image.includes(newImage)) {
       setGym({ ...gym, image: [...gym.image, newImage] });
       setNewImage("");
     }
   };
 
-  const handleSaveChanges = async (): Promise<void> => {
+  const handleSaveChanges = async () => {
+    if (!gymId || !gym) return;
+    const { classes, ...pureGymData } = gym;
     try {
-      // Check if gymId and gym are strings
-      if (typeof gymId !== 'string' || typeof gym !== 'object') {
-        alert("Invalid gymId or gym data");
-        return;
-      }
-  
-      // Call the updateGym function to save the gym data
-      const updatedGym = await updateGym(gymId, gym);
-  
-      if (updatedGym) {
+      const res = await updateGym(gymId as string, pureGymData);
+      if (res) {
         setIsModalOpen(true);
       } else {
-        alert("Failed to save gym data");
+        alert("Failed to update gym");
       }
     } catch (error) {
-      console.error("Error saving gym data:", error);
-      alert("Failed to save data");
+      console.error("Update error:", error);
+      alert("An error occurred while updating the gym.");
     }
   };
-  
+
+  const handleDeleteClass = (index: number) => {
+    setClassToDelete(index);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!gymId || classToDelete === null) return;
+    try {
+      await fetch(`http://localhost:5001/api/admin/gyms/${gymId}/classes/${classToDelete}`, {
+        method: "DELETE",
+      });
+      const updatedClasses = gym.classes.filter((_: any, i: number) => i !== classToDelete);
+      setGym({ ...gym, classes: updatedClasses });
+    } catch (err) {
+      console.error("Delete class failed:", err);
+      alert("Failed to delete class.");
+    } finally {
+      setShowDeleteModal(false);
+      setClassToDelete(null);
+    }
+  };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+    <div className="p-6">
       <h1 className="text-3xl font-bold text-center mb-6">Edit Muay Thai Gym</h1>
 
       {loading ? (
         <p className="text-center">Loading...</p>
       ) : gym ? (
-        <div className="border rounded-lg p-6 shadow-lg bg-white max-w-full mx-auto">
-          <h2 className="text-2xl font-semibold mb-4 text-center">{gym.name || "No Name"}</h2>
+        <div className="border p-6 rounded-lg shadow-lg bg-white">
+          <h2 className="text-xl font-semibold mb-4 text-center">{gym.name || "No Name"}</h2>
 
           <div className="mb-4">
             <strong>Data Status:</strong>{" "}
@@ -91,92 +127,164 @@ export default function GymEditPage() {
               <span className="text-green-600">Complete</span>
             ) : (
               <span className="text-red-600">
-                Missing Data:
+                Missing:
                 {!gym.description && " Description"}
                 {!gym.location && " Location"}
                 {(!gym.image || gym.image.length === 0) && " Image"}
                 {!gym.openHours && " Open Hours"}
-                {!gym.url && " Website Link"}
+                {!gym.url && " Website"}
               </span>
             )}
           </div>
 
           <div className="mb-4">
-            <strong>Description:</strong>
+            <label className="block font-semibold mb-1">Description:</label>
             <textarea
               value={gym.description || ""}
               onChange={(e) => setGym({ ...gym, description: e.target.value })}
-              className="w-full p-3 border rounded-lg"
-              rows={4}
+              className="w-full p-3 border rounded"
+              rows={3}
             />
           </div>
 
           <div className="mb-4">
-            <strong>Location:</strong>
+            <label className="block font-semibold mb-1">Location:</label>
             <textarea
               value={gym.location || ""}
               onChange={(e) => setGym({ ...gym, location: e.target.value })}
-              className="w-full p-3 border rounded-lg"
-              rows={4}
+              className="w-full p-3 border rounded"
+              rows={3}
             />
           </div>
 
           <div className="mb-4">
-            <strong>Images:</strong>
-            <div className="flex flex-wrap gap-2">
-              {gym.image?.map((img: string, index: number) => (
-                <img key={index} src={img} alt={`Gym ${index}`} className="w-24 h-24 object-cover rounded" />
+            <label className="block font-semibold mb-1">Images:</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {gym.image.map((img: string, idx: number) => (
+                <img key={idx} src={img} className="w-24 h-24 object-cover rounded shadow" />
               ))}
             </div>
             <input
               type="text"
               value={newImage}
               onChange={(e) => setNewImage(e.target.value)}
-              className="w-full p-3 border rounded-lg mt-2"
-              placeholder="Add image link"
+              className="w-full p-2 border rounded mb-2"
+              placeholder="Add image URL"
             />
             <button
+              type="button"
               onClick={handleAddImage}
-              className="mt-2 bg-green-500 text-white px-6 py-2 rounded-lg"
+              className="bg-green-500 text-white px-4 py-2 rounded-full"
             >
               Add Image
             </button>
           </div>
 
           <div className="mb-4">
-            <strong>Website:</strong>{" "}
-            {gym.url ? (
-              <a href={gym.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                {gym.url}
-              </a>
-            ) : (
-              "No Link"
-            )}
+            <label className="block font-semibold mb-1">Website URL:</label>
+            <input
+              type="url"
+              value={gym.url || ""}
+              onChange={(e) => setGym({ ...gym, url: e.target.value })}
+              className="w-full p-3 border rounded"
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block font-semibold mb-2">Opening Hours:</label>
+            {Object.keys(gym.openHours).map((day) => (
+              <div key={day} className="mb-2">
+                <label className="block">{day}:</label>
+                <input
+                  type="text"
+                  value={gym.openHours[day]}
+                  onChange={(e) =>
+                    setGym({
+                      ...gym,
+                      openHours: { ...gym.openHours, [day]: e.target.value },
+                    })
+                  }
+                  className="w-full p-2 border rounded"
+                  placeholder="e.g., 07:00 - 21:00"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8">
+            <div className="flex justify-between items-center cursor-pointer">
+              <h2 className="text-2xl font-semibold mb-4">Training Classes</h2>
+              <Link
+                href={`/data/gyms/edit/${gymId}/classes/create`}
+                className="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition mb-4 inline-block"
+              >
+                Add New Class
+              </Link>
+              <span className="text-blue-600 cursor-pointer" onClick={() => setIsClassesOpen(!isClassesOpen)}>
+                {isClassesOpen ? "Hide ▲" : "Show ▼"}
+              </span>
+            </div>
+
+            {isClassesOpen && gym.classes?.map((cls: any, index: number) => (
+              <div key={index} className="border p-4 rounded mb-4 shadow-sm">
+                <p><strong>Class Name:</strong> {cls.className || <span className="text-red-500">Missing</span>}</p>
+                <p><strong>Type:</strong> {cls.type || <span className="text-red-500">Missing</span>}</p>
+                <p><strong>Highlight:</strong> {cls.highlight || <span className="text-red-500">Missing</span>}</p>
+                <p><strong>Schedule:</strong> {cls.dailyTimeTable || <span className="text-red-500">Missing</span>}</p>
+
+                <div className="flex gap-4 mt-2">
+                  <Link
+                    href={`/data/gyms/edit/${gymId}/classes/edit/${index}`}
+                    className="bg-yellow-500 text-white px-4 py-1 rounded-full"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    className="bg-red-500 text-white px-4 py-1 rounded-full"
+                    onClick={() => handleDeleteClass(index)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="flex justify-between mt-6">
-            <button onClick={() => router.back()} className="bg-gray-500 text-white px-6 py-2 rounded-lg">
+            <button onClick={() => router.back()} className="bg-gray-500 text-white px-6 py-2 rounded-full">
               Go Back
             </button>
-            <button onClick={handleSaveChanges} className="bg-blue-500 text-white px-6 py-2 rounded-lg">
+            <button onClick={handleSaveChanges} className="bg-blue-500 text-white px-6 py-2 rounded-full">
               Save Changes
             </button>
           </div>
         </div>
       ) : (
-        <p className="text-center text-red-500">Gym not found or data is missing.</p>
+        <p className="text-center text-red-500">Gym not found or something went wrong.</p>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg text-center">
-            <h2 className="text-2xl font-bold mb-4">Save Successful</h2>
-            <button onClick={() => setIsModalOpen(false)} className="bg-blue-500 text-white px-6 py-2 rounded-lg">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg text-center shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Saved Successfully</h2>
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="bg-blue-500 text-white px-6 py-2 rounded-full"
+            >
               OK
             </button>
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        title="Delete Class"
+        message="Are you sure you want to delete this class?"
+      />
     </div>
   );
 }

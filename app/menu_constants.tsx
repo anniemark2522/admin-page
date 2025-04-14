@@ -3,7 +3,6 @@ import { BsGear,  BsQuestionCircle } from "react-icons/bs";
 import { RiBoxingFill } from "react-icons/ri";
 import { FaDatabase } from "react-icons/fa6";
 import { IoNotifications } from "react-icons/io5";
-import { TbReport } from "react-icons/tb";
 
 
 
@@ -32,6 +31,9 @@ export const SIDENAV_ITEMS: SideNavItemGroup[] = [
                 submenu: true,
                 subMenuItems: [
                     { title: 'Gym Muay Thai', path: '/data/gyms' },
+                    { title: 'Accomodation', path: '/data/accommodation' },
+                    { title: 'Food', path: '/data/food' },
+                    { title: 'Attraction', path: '/data/attraction' },
                     { title: 'Member Trip', path: '/data/trips' },
                     { title: 'User', path: '/data/users' },
                     

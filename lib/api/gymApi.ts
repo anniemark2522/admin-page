@@ -1,9 +1,12 @@
-const API_BASE_URL = "http://localhost:5001"; // Adjust this as needed
+const API_BASE_URL = "http://localhost:5001";
 
-// Fetch all gyms
-export async function fetchGyms(gymId: string) {
+//all gyms or by gymId
+export async function fetchGyms(gymId?: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gymadmin`);
+    const url = new URL(`${API_BASE_URL}/api/admin/gyms`);
+    if (gymId) url.searchParams.append("gymId", gymId);
+
+    const response = await fetch(url.toString());
     if (!response.ok) throw new Error("Failed to fetch gyms");
     return await response.json();
   } catch (error) {
@@ -11,25 +14,29 @@ export async function fetchGyms(gymId: string) {
     return [];
   }
 }
-// Fetch a single gym by ID
-export async function fetchGymById(gymId: string) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/gymadmin?gymId=${gymId}`);
-    if (!response.ok) throw new Error("Failed to fetch gym data");
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching gym:", error);
-    return null;
+
+// Create new gym
+export async function createGym(data: any) {
+  const res = await fetch(`${API_BASE_URL}/api/admin/gyms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text(); // ✅ ดูข้อความ error
+    console.error("Create gym failed:", res.status, errorText);
+    throw new Error("Failed to create gym");
   }
+  return await res.json();
 }
+
 // Update gym details
 export async function updateGym(gymId: string, gymData: any) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gym/${gymId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/gyms/${gymId}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ gymId, ...gymData }),
     });
 
@@ -43,19 +50,35 @@ export async function updateGym(gymId: string, gymData: any) {
 
 // Delete a gym
 export async function deleteGym(gymId: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/gym/${gymId}`, {
-        method: "DELETE",
-      });
-  
-      if (!response.ok) throw new Error(`Failed to delete gym, status: ${response.status}`);
-      
-      const responseData = await response.json();
-      console.log("Delete response:", responseData);
-      return responseData;
-    } catch (error) {
-      console.error("Error deleting gym:", error);
-      return null;
-    }
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/gyms/${gymId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) throw new Error(`Failed to delete gym, status: ${response.status}`);
+    
+    const responseData = await response.json();
+    console.log("Delete response:", responseData);
+    return responseData;
+  } catch (error) {
+    console.error("Error deleting gym:", error);
+    return null;
   }
-  
+}
+
+//classes gym
+export async function fetchGymClasses(gymId: string) {
+  try {
+    const url = new URL(`${API_BASE_URL}/api/admin/gyms/classes`);
+    url.searchParams.append("gymId", gymId);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error("Failed to fetch gym classes");
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error fetching gym classes:", error);
+    return [];
+  }
+}
+

@@ -2,36 +2,31 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-// Function to handle the submission of the new gym form
-async function createGym(data: any) {
-  try {
-    const response = await fetch("http://localhost:5001/api/gymadmin", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    
- if (!response.ok) {
-      const errorData = await response.json();
-      console.error("ข้อผิดพลาดจากการตอบกลับ:", errorData);
-      throw new Error("ไม่สามารถสร้าง gym ได้: " + errorData.error);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error("ข้อผิดพลาดในการสร้าง gym:", error);
-    return null;
-  }
-}
+import { createGym } from "@/lib/api/gymApi";
 
 export default function CreateGymPage() {
-  const [gymData, setGymData] = useState({
+  const router = useRouter();
+  const [gymData, setGymData] = useState<{
+    name: string;
+    location: string;
+    description: string;
+    image: string[]; 
+    url: string;
+    openHours: {
+      Sunday: string;
+      Monday: string;
+      Tuesday: string;
+      Wednesday: string;
+      Thursday: string;
+      Friday: string;
+      Saturday: string;
+    };
+  }>({
     name: "",
-    description: "",
     location: "",
+    description: "",
+    image: [],
+    url: "",
     openHours: {
       Sunday: "",
       Monday: "",
@@ -40,189 +35,132 @@ export default function CreateGymPage() {
       Thursday: "",
       Friday: "",
       Saturday: "",
-    },
-    image: [],
-    url: "",
+  },
   });
+  const [newImage, setNewImage] = useState("");
 
-  const [newImage, setNewImage] = useState<string>("");
-  const router = useRouter();
-
-  // Handle form input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setGymData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
-
-  // Handle opening hours change
-  const handleOpenHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setGymData((prevData) => ({
-      ...prevData,
-      openHours: {
-        ...prevData.openHours,
-        [name]: value,
-      },
-    }));
-  };
-
-  // Handle adding image
-  const handleAddImage = () => {
-    if (newImage && !gymData.image.includes(newImage)) {
-      setGymData({ ...gymData, image: [...gymData.image, newImage] });
-      setNewImage('');
+  const handleSave = async () => {
+    try {
+      const dataToSend = {
+        ...gymData,
+        image: gymData.image.filter((img) => img.trim() !== ""),
+      };
+      const result = await createGym(dataToSend);
+      if (result) {
+        alert("Gym created successfully!");
+        router.push("/data/gyms");
+      }
+    } catch (error) {
+      console.error("Failed to create gym:", error);
+      alert("Failed to create gym.");
     }
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = await createGym(gymData);
-    if (result) {
-      alert("Gym created successfully!");
-      router.push("/"); // Redirect after successful creation
-    } else {
-      alert("Failed to create gym. Please try again.");
-    }
-  };
-
-  // Handle back button
-  const handleBack = () => {
-    router.back(); // Navigate back to the previous page
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
-      <h1 className="text-3xl font-bold text-center mb-6">Create Muay Thai Gym</h1>
-      <form onSubmit={handleSubmit} className="border rounded-lg p-6 shadow-lg bg-white max-w-full mx-auto">
-        
+    <div className="p-6 max-full">
+      <h1 className="text-3xl font-bold text-center mb-6">Create New Muay Thai Gym</h1>
+
+      <div className="bg-white p-6 rounded-lg shadow">
         <div className="mb-4">
-          <label htmlFor="name" className="block text-lg font-medium">Gym Name:</label>
+          <label className="block font-semibold mb-1">Gym Name:</label>
           <input
             type="text"
-            id="name"
-            name="name"
+            className="w-full p-2 border rounded"
             value={gymData.name}
-            onChange={handleInputChange}
-            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            placeholder="Enter Gym Name"
-            required
+            onChange={(e) => setGymData({ ...gymData, name: e.target.value })}
           />
         </div>
 
         <div className="mb-4">
-          <label htmlFor="description" className="block text-lg font-medium">Description:</label>
+          <label className="block font-semibold mb-1">Location:</label>
           <textarea
-            id="description"
-            name="description"
-            value={gymData.description}
-            onChange={handleInputChange}
-            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            rows={4}
-            placeholder="Enter Gym Description"
-            required
-          />
-        </div>
-
-        <div className="mb-4">
-          <label htmlFor="location" className="block text-lg font-medium">Location:</label>
-          <textarea
-            id="location"
-            name="location"
+            className="w-full p-2 border rounded"
             value={gymData.location}
-            onChange={handleInputChange}
-            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            rows={4}
-            placeholder="Enter Gym Location"
-            required
+            onChange={(e) => setGymData({ ...gymData, location: e.target.value })}
           />
         </div>
 
         <div className="mb-4">
-          <label htmlFor="openHours" className="block text-lg font-medium">Opening Hours:</label>
-          {Object.keys(gymData.openHours).map((day) => (
+          <label className="block font-semibold mb-1">Description:</label>
+          <textarea
+            className="w-full p-2 border rounded"
+            value={gymData.description}
+            onChange={(e) => setGymData({ ...gymData, description: e.target.value })}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-semibold mb-1">Images:</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {gymData.image.map((img, i) => (
+              <img key={i} src={img} className="w-20 h-20 object-cover rounded" />
+            ))}
+          </div>
+          <input
+            type="text"
+            placeholder="Image URL"
+            className="w-full p-2 border rounded mb-2"
+            value={newImage}
+            onChange={(e) => setNewImage(e.target.value)}
+          />
+          <button
+            onClick={() => {
+              if (newImage.trim()) {
+                setGymData({ ...gymData, image: [...gymData.image, newImage.trim()] });
+                setNewImage("");
+              }
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition"
+          >
+            Add Image
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-semibold mb-1">Website URL:</label>
+          <input
+            type="url"
+            className="w-full p-2 border rounded"
+            placeholder="https://..."
+            value={gymData.url}
+            onChange={(e) => setGymData({ ...gymData, url: e.target.value })}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-semibold mb-2">Opening Hours:</label>
+          {Object.entries(gymData.openHours).map(([day, time]) => (
             <div key={day} className="mb-2">
-              <label htmlFor={day} className="block">{day}:</label>
+              <label className="block">{day}:</label>
               <input
                 type="text"
-                id={day}
-                name={day}
-                value={gymData.openHours[day]}
-                onChange={handleOpenHoursChange}
-                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-                placeholder="Enter hours (e.g., 07:00 - 21:00)"
+                value={time}
+                onChange={(e) =>
+                  setGymData({
+                    ...gymData,
+                    openHours: { ...gymData.openHours, [day]: e.target.value },
+                  })
+                }
+                className="w-full p-2 border rounded"
+                placeholder="e.g., 07:00 - 21:00"
               />
             </div>
           ))}
         </div>
-
-        <div className="mb-4">
-          <label htmlFor="image" className="block text-lg font-medium">Images:</label>
-          <div className="flex flex-wrap gap-2">
-            {gymData.image.map((img, index) => (
-              <img
-                key={index}
-                src={img}
-                alt={`Gym Image ${index + 1}`}
-                width={100}
-                height={100}
-                className="w-24 h-24 object-cover rounded-lg shadow"
-              />
-            ))}
-            <div className="mt-4">
-              <input
-                type="text"
-                value={newImage}
-                onChange={(e) => setNewImage(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-                placeholder="Add Image URL"
-              />
-              <button
-                type="button"
-                onClick={handleAddImage}
-                className="mt-2 bg-green-500 text-white px-6 py-2 rounded-full hover:bg-green-600"
-              >
-                Add Image
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label htmlFor="url" className="block text-lg font-medium">Website URL:</label>
-          <input
-            type="url"
-            id="url"
-            name="url"
-            value={gymData.url}
-            onChange={handleInputChange}
-            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            placeholder="Enter Website URL"
-          />
-        </div>
-
-        <div className="mt-6">
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-6 py-3 rounded-full shadow-lg hover:bg-blue-600"
+        <div className="mt-6 flex justify-between">
+          <button 
+          onClick={() => router.back()}
+          className="bg-gray-500 text-white px-4 py-2 rounded-full hover:bg-gray-600 transition"
           >
-            Create Gym
+            Back
+          </button>
+          <button onClick={handleSave} 
+          className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition"
+          >
+            Save Gym
           </button>
         </div>
-      </form>
-
-      {/* Back Button */}
-      <div className="mt-6 text-center">
-        <button
-          onClick={handleBack}
-          className="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-gray-600"
-        >
-          Back
-        </button>
       </div>
-    </div>
+      </div>
   );
 }
