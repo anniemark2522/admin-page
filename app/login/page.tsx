@@ -21,7 +21,7 @@ export default function Login() {
 
   const doLogin = () => {
     if (email === "admin" && password === "muaythaigyms") {
-      router.push("/");
+      router.push("/data/main");
     } else {
       setError("Invalid email or password");
     }

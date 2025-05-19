@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { fetchFoods, deleteFood } from "@/lib/api/foodApi";
-import ConfirmDeleteModal from "@/components/ConfirmDeleteModel";
+import ConfirmDeleteModel from "@/components/ConfirmDeleteModel";
 
 export default function FoodListPage() {
   const [foods, setFoods] = useState<any[]>([]);
@@ -157,7 +157,7 @@ export default function FoodListPage() {
         </tbody>
       </table>
 
-      <ConfirmDeleteModal
+      <ConfirmDeleteModel
         isOpen={showDeleteModal}
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteModal(false)}

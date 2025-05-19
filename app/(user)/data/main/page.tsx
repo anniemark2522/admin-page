@@ -7,13 +7,13 @@ import { PlusIcon } from 'lucide-react'
 
 const sections = [
   {
-    title: 'Muay Thai Gyms',
+    title: 'Gym Muay Thai',
     path: '/data/gyms',
     buttonText: 'Add Gym',
     addPath: '/data/gyms/create',
   },
   {
-    title: 'Food Listings',
+    title: 'Food',
     path: '/data/food',
     buttonText: 'Add Food',
     addPath: '/data/food/create',
@@ -25,14 +25,14 @@ const sections = [
     addPath: '/data/accommodation/create',
   },
   {
-    title: 'Attractions',
+    title: 'Attraction',
     path: '/data/attraction',
     buttonText: 'Add Attraction',
     addPath: '/data/attraction/create',
   },
   {
-    title: 'User Accounts',
-    path: '/admin/users',
+    title: 'User',
+    path: '/data/users',
     buttonText: null,
   },
 ]
