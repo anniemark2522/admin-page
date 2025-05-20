@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface GymData {
   gymId: string;
@@ -10,128 +11,78 @@ interface GymData {
   long?: string;
 }
 
-export default function LocationPage() {
+export default function LocationGymPage() {
   const [gyms, setGyms] = useState<GymData[]>([]);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     fetch("http://localhost:5001/api/data")
       .then((res) => res.json())
-      .then((data) => setGyms(data))
+      .then((data) =>
+        setGyms(
+          data.map((g: any) => ({
+            ...g,
+            lat: g.lat?.toString() ?? "",
+            long: g.long?.toString() ?? "",
+          }))
+        )
+      )
       .catch((err) => console.error("Error loading data:", err));
   }, []);
 
-  const handleInputChange = (index: number, field: keyof GymData, value: string) => {
-    const updatedGyms = [...gyms];
-    updatedGyms[index][field] = value;
-    setGyms(updatedGyms);
-  };
-
-  const handleSave = async (gym: GymData) => {
-    const res = await fetch("http://localhost:5001/api/update-latlng", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        gymId: gym.gymId,
-        lat: gym.lat,
-        long: gym.long,
-      }),
-    });
-
-    if (res.ok) {
-      alert("บันทึกสำเร็จ");
-      setEditIndex(null);
-    } else {
-      alert("บันทึกล้มเหลว");
-    }
-  };
-
-  const handleGeocode = async (index: number) => {
-    const gym = gyms[index];
-    const fullAddress = `${gym.name} ${gym.province}`;
-    const res = await fetch(`http://localhost:3000/api/geocoding?query=${encodeURIComponent(fullAddress)}`);
-    const data = await res.json();
-
-    if (data?.lat && data?.lng) {
-      const updated = [...gyms];
-      updated[index].lat = data.lat.toString();
-      updated[index].long = data.lng.toString();
-      setGyms(updated);
-      alert("อัปเดตพิกัดสำเร็จจาก Geocoding!");
-    } else {
-      alert("หา location ไม่เจอจาก API");
-    }
-  };
+  const filteredGyms = gyms
+    .filter((g) =>
+      g.name.toLowerCase().includes(search.toLowerCase()) ||
+      g.province.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => a.province.localeCompare(b.province));
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Gym Location Data</h1>
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-200 text-center">
-            <th className="border p-2">Name</th>
-            <th className="border p-2">Province</th>
-            <th className="border p-2">Latitude</th>
-            <th className="border p-2">Longitude</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gyms.map((gym, i) => (
-            <tr key={i} className="text-center">
-              <td className="border p-2">{gym.name}</td>
-              <td className="border p-2">{gym.province}</td>
-              <td className="border p-2">
-                {editIndex === i ? (
-                  <input
-                    type="text"
-                    value={gym.lat ?? ""}
-                    onChange={(e) => handleInputChange(i, "lat", e.target.value)}
-                    className="border px-2 py-1 rounded w-full"
-                  />
-                ) : (
-                  gym.lat ?? "-"
-                )}
-              </td>
-              <td className="border p-2">
-                {editIndex === i ? (
-                  <input
-                    type="text"
-                    value={gym.long ?? ""}
-                    onChange={(e) => handleInputChange(i, "long", e.target.value)}
-                    className="border px-2 py-1 rounded w-full"
-                  />
-                ) : (
-                  gym.long ?? "-"
-                )}
-              </td>
-              <td className="border p-2 space-x-2">
-                {editIndex === i ? (
+    <div className="p-6 w-full max-w-screen-xl mx-auto">
+      <h1 className="text-3xl font-bold text-center mb-6 text-[#9A031E]">Gym Location Data</h1>
+
+      <div className="mb-4 text-center">
+        <input
+          type="text"
+          placeholder="Search by gym or province"
+          className="w-full md:w-1/2 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9A031E]"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="bg-white border border-[#9A031E] rounded-lg shadow-md overflow-auto">
+        <table className="w-full table-fixed border-collapse">
+          <thead>
+            <tr className="bg-[#9A031E] text-white text-center">
+              <th className="border p-3 w-1/4">Name</th>
+              <th className="border p-3 w-1/6">Province</th>
+              <th className="border p-3 w-1/6">Latitude</th>
+              <th className="border p-3 w-1/6">Longitude</th>
+              <th className="border p-3 w-1/4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredGyms.map((gym, i) => (
+              <tr key={i} className="text-center hover:bg-gray-50">
+                <td className="border p-3 break-words text-left">{gym.name}</td>
+                <td className="border p-3 capitalize">{gym.province}</td>
+                <td className="border p-3">{gym.lat ?? "-"}</td>
+                <td className="border p-3">{gym.long ?? "-"}</td>
+                <td className="border p-3 space-x-2">
                   <button
-                    onClick={() => handleSave(gym)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                  >
-                    Save
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setEditIndex(i)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                    onClick={() => router.push(`/data/location/edit/${gym.gymId}`)}
+                    className="bg-blue-600 text-white px-4 py-1 rounded-full hover:bg-blue-700"
                   >
                     Edit
                   </button>
-                )}
-                <button
-                  onClick={() => handleGeocode(i)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                >
-                  Sync Coordinates
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

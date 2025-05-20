@@ -9,6 +9,7 @@ export default function CreateGymPage() {
   const [gymData, setGymData] = useState<{
     name: string;
     location: string;
+    province: string;
     description: string;
     image: string[]; 
     url: string;
@@ -24,6 +25,7 @@ export default function CreateGymPage() {
   }>({
     name: "",
     location: "",
+    province: "",
     description: "",
     image: [],
     url: "",
@@ -70,6 +72,16 @@ export default function CreateGymPage() {
             onChange={(e) => setGymData({ ...gymData, name: e.target.value })}
           />
         </div>
+        <div className="mb-4">
+  <label className="block font-semibold mb-1">Province:</label>
+  <input
+    type="text"
+    className="w-full p-2 border rounded"
+    value={gymData.province || ""}
+    onChange={(e) => setGymData({ ...gymData, province: e.target.value })}
+  />
+</div>
+
 
         <div className="mb-4">
           <label className="block font-semibold mb-1">Location:</label>
